@@ -1257,6 +1257,7 @@ public class ColladaHandler {
                 	private boolean inRotateZ = false;
                 	private boolean inTranslate = false;
                 	private boolean inScale = false;
+                	private boolean inTransform = false;
         			private ColladaSceneNode daeNode;
                 	
                 	public colladaSceneNode(ColladaSceneNode node){
@@ -1265,8 +1266,12 @@ public class ColladaHandler {
 
                     public void startElement(String uri, String localName, String name, Attributes atts) throws SAXException {
                         super.startElement(uri, localName, name, atts);
-                        
-                        if (localName.equalsIgnoreCase("rotate")){
+
+                        if (localName.equalsIgnoreCase("matrix")){
+                        	if( atts.getValue("sid").equalsIgnoreCase("transform") ){
+                        		inTransform = true;
+                        	}
+                        }else if (localName.equalsIgnoreCase("rotate")){
                         	if( atts.getValue("sid").equalsIgnoreCase("rotationX") ){
                         		inRotateX = true;
                         	}else if( atts.getValue("sid").equalsIgnoreCase("rotationY") ){
@@ -1301,7 +1306,11 @@ public class ColladaHandler {
                     public void endElement(String uri, String localName, String name) throws SAXException {
                         super.endElement(uri, localName, name);
                         
-                        if (localName.equalsIgnoreCase("rotate")){
+                        if (localName.equalsIgnoreCase("matrix")){
+                        	if( inTransform ){
+                        		inTransform = false;
+                        	}
+                        }else if (localName.equalsIgnoreCase("rotate")){
                         	if( inRotateX ){
                         		inRotateX = false;
                         	}else if( inRotateY ){
@@ -1326,7 +1335,44 @@ public class ColladaHandler {
                         super.characters(ch, start, length);
                         String text = new String(ch, start, length);
 
-                        if( inRotateX ){
+                        if( inTransform ){
+		                	Pattern p = Pattern.compile("\\s+");
+		                	String[] temp = p.split(text.trim());
+		                	float r0c0 = Float.parseFloat(temp[0]);
+		                	float r0c1 = Float.parseFloat(temp[1]);
+		                	float r0c2 = Float.parseFloat(temp[2]);
+		                	float r0c3 = Float.parseFloat(temp[3]);
+		                	float r1c0 = Float.parseFloat(temp[4]);
+		                	float r1c1 = Float.parseFloat(temp[5]);
+		                	float r1c2 = Float.parseFloat(temp[6]);
+		                	float r1c3 = Float.parseFloat(temp[7]);
+		                	float r2c0 = Float.parseFloat(temp[8]);
+		                	float r2c1 = Float.parseFloat(temp[9]);
+		                	float r2c2 = Float.parseFloat(temp[10]);
+		                	float r2c3 = Float.parseFloat(temp[11]);
+		                	float r3c0 = Float.parseFloat(temp[12]);
+		                	float r3c1 = Float.parseFloat(temp[13]);
+		                	float r3c2 = Float.parseFloat(temp[14]);
+		                	float r3c3 = Float.parseFloat(temp[15]);
+		            
+                        	daeNode.setTransform(new ColladaMatrix4f(
+                        			r0c0,
+                        			r0c1,
+                        			r0c2,
+                        			r0c3,
+                        			r1c0,
+                        			r1c1,
+                        			r1c2,
+                        			r1c3,
+                        			r2c0,
+                        			r2c1,
+                        			r2c2,
+                        			r2c3,
+                        			r3c0,
+                        			r3c1,
+                        			r3c2,
+                        			r3c3));
+                        }else if( inRotateX ){
 		                	Pattern p = Pattern.compile("\\s+");
 		                	String[] temp = p.split(text.trim());
 		                	float x = Float.parseFloat(temp[0]);

@@ -69,6 +69,13 @@ public class ColladaTriangles implements ColladaPrimitive {
     	float[] dst_normals = null;
     	float[] dst_texCoords = null;
 
+    	float minx;
+    	float maxx;
+    	float miny;
+    	float maxy;
+    	float minz;
+    	float maxz;
+    
 		totalIndices = src_indices.length/num_inputs;
 
     	dst_indices = new int[totalIndices];
@@ -83,6 +90,13 @@ public class ColladaTriangles implements ColladaPrimitive {
     		src_texCoords = dae_texcoords.getFloatArray().getFloatData();
     		dst_texCoords = new float[totalIndices*texCoords_stride];
     	}
+
+    	minx = src_vertices[0];
+    	maxx = src_vertices[0];
+    	miny = src_vertices[1];
+    	maxy = src_vertices[1];
+    	minz = src_vertices[2];
+    	maxz = src_vertices[2];
     	
  		int f=0;
     	int v=0; // vector offset into dst
@@ -94,16 +108,37 @@ public class ColladaTriangles implements ColladaPrimitive {
     		dst_vertices[v+1] = src_vertices[src_indices[x+vertices_offset]*vertices_stride+1];
     		dst_vertices[v+2] = src_vertices[src_indices[x+vertices_offset]*vertices_stride+2];
     		dst_indices[f] = f;
+    		
+    		minx = Math.min( minx, dst_vertices[v] );
+    		maxx = Math.max( maxx, dst_vertices[v] );
+    		miny = Math.min( miny, dst_vertices[v+1] );
+    		maxy = Math.max( maxy, dst_vertices[v+1] );
+    		minz = Math.min( minz, dst_vertices[v+2] );
+    		maxz = Math.max( maxz, dst_vertices[v+2] );
 
     		dst_vertices[v+3]   = src_vertices[src_indices[x+num_inputs+vertices_offset]*vertices_stride];
     		dst_vertices[v+4] = src_vertices[src_indices[x+num_inputs+vertices_offset]*vertices_stride+1];
     		dst_vertices[v+5] = src_vertices[src_indices[x+num_inputs+vertices_offset]*vertices_stride+2];
     		dst_indices[f+1] = f+1;
 
+    		minx = Math.min( minx, dst_vertices[v+3] );
+    		maxx = Math.max( maxx, dst_vertices[v+3] );
+    		miny = Math.min( miny, dst_vertices[v+4] );
+    		maxy = Math.max( maxy, dst_vertices[v+4] );
+    		minz = Math.min( minz, dst_vertices[v+5] );
+    		maxz = Math.max( maxz, dst_vertices[v+5] );
+    		
     		dst_vertices[v+6]   = src_vertices[src_indices[x+2*num_inputs+vertices_offset]*vertices_stride];
     		dst_vertices[v+7] = src_vertices[src_indices[x+2*num_inputs+vertices_offset]*vertices_stride+1];
     		dst_vertices[v+8] = src_vertices[src_indices[x+2*num_inputs+vertices_offset]*vertices_stride+2];
     		dst_indices[f+2] = f+2;
+
+    		minx = Math.min( minx, dst_vertices[v+6] );
+    		maxx = Math.max( maxx, dst_vertices[v+6] );
+    		miny = Math.min( miny, dst_vertices[v+7] );
+    		maxy = Math.max( maxy, dst_vertices[v+7] );
+    		minz = Math.min( minz, dst_vertices[v+8] );
+    		maxz = Math.max( maxz, dst_vertices[v+8] );
     		
     		if(src_normals != null){
 	    		dst_normals[v]   = src_normals[src_indices[x+normals_offset]*normals_stride];
@@ -145,6 +180,8 @@ public class ColladaTriangles implements ColladaPrimitive {
     	if(dst_texCoords != null){
     		mesh.setTexCoords(dst_texCoords);
     	}
+    	
+    	mesh.setBounds(minx, maxx, miny, maxy, minz, maxz);
 
 		return mesh;
     }

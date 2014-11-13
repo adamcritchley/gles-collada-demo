@@ -52,6 +52,7 @@ public class GlColladaDemoActivity extends Activity {
 	private FontLibrary libfonts;
 
 	private Matrix4 modelViewMatrix = new Matrix4();
+	private Matrix4 projMatrix = new Matrix4();
 	private float oldX = 0.0f;
 	private float oldY = 0.0f;
 	private final float TOUCH_SCALE = 0.2f;
@@ -78,6 +79,7 @@ public class GlColladaDemoActivity extends Activity {
 
         Matrix4.setIdentity(modelViewMatrix);
         modelViewMatrix.scaleThis(z, z, z);
+        Matrix4.setIdentity(projMatrix);
         
         threeDec = new DecimalFormat("0.000");
     	threeDec.setGroupingUsed(false);
@@ -199,8 +201,7 @@ public class GlColladaDemoActivity extends Activity {
 
 			GLES20.glFrontFace( GLES20.GL_CCW );
 
-			gl2Model[curModel].setModelViewMatrix(modelViewMatrix);
-			gl2Model[curModel].draw();
+			gl2Model[curModel].drawTriangles(projMatrix, modelViewMatrix);
 
 			long nowTime = System.currentTimeMillis();
 			long diffTime = nowTime - startTime;

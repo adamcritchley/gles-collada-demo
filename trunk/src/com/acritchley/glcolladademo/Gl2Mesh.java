@@ -1,12 +1,15 @@
 package com.acritchley.glcolladademo;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
+import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.opengl.GLES20;
@@ -15,13 +18,15 @@ import android.util.Log;
 
 import com.acritchley.collada.ColladaFxSampler;
 import com.acritchley.collada.ColladaFxSurface;
+import com.acritchley.collada.ColladaMatrix4f;
 import com.acritchley.collada.ColladaMesh;
 import com.acritchley.collada.ColladaParamEvaluator;
 import com.acritchley.collada.ColladaProfileCommon;
 import com.acritchley.collada.ColladaProfileEvaluator;
+import com.acritchley.collada.ColladaShader;
 import com.acritchley.collada.ColladaTechniqueFxEvaluator;
 import com.acritchley.collada.ColladaTechniqueFxPhong;
-import com.acritchley.glmath.DirectMatrix;
+import com.acritchley.glmath.DirectMatrix4f;
 import com.acritchley.glmath.Matrix4;
 import com.acritchley.glmath.MatrixStack;
 
@@ -30,6 +35,9 @@ public class Gl2Mesh implements ColladaMesh {
     private FloatBuffer mVertexBuffer = null;
     private FloatBuffer mNormalBuffer = null;
     private FloatBuffer mTexCoordsBuffer = null;
+    private int numVertices = 0;
+    private int numNormals = 0;
+    private int numTexCoords = 0;
     private IntBuffer mIndexBuffer = null;
     private int vboVertexHandle = -1;
 	private int vboNormalsHandle = -1;
@@ -45,12 +53,21 @@ public class Gl2Mesh implements ColladaMesh {
 	private int texLocation;
 	private int modelViewLocation;
 	private int shaderProgram;
-	private Gl2Model gl2Model;
+	private ColladaShader shaderObject;
+	private AssetManager assetMgr;
 	private Matrix4 worldViewMatrix;
-	private DirectMatrix worldViewMatrixBuffer = new DirectMatrix();
+	private DirectMatrix4f worldProjViewBuffer = new DirectMatrix4f();
+	
+	// Bounds used for hit testing
+	private float minX; 
+	private float maxX;
+	private float minY; 
+	private float maxY;
+	private float minZ; 
+	private float maxZ;
 
-    public Gl2Mesh(Gl2Model model) {
-    	gl2Model = model;
+    public Gl2Mesh(AssetManager assetManager) {
+    	assetMgr = assetManager;
 	}
     
     public int size(){
@@ -60,7 +77,25 @@ public class Gl2Mesh implements ColladaMesh {
     public ColladaProfileEvaluator createProfileEvaluator(){
     	return new GLES20ProfileEvaluator();
     }
- 
+    
+    @Override
+    public void buildMesh(){
+    	shaderObject = null;
+    	createModel();
+    	shaderProgram = createDefaultShader();
+		modelViewLocation = GLES20.glGetUniformLocation(shaderProgram, "modelViewMatrix");
+		texLocation = GLES20.glGetUniformLocation(shaderProgram, texName );
+    }
+
+    @Override
+    public void buildMesh(ColladaShader shader){
+    	shaderObject = shader;
+    	createModel();
+    	shaderProgram = shader.buildShader(assetMgr, texName, "modelViewMatrix");
+		modelViewLocation = GLES20.glGetUniformLocation(shaderProgram, "modelViewMatrix");
+		texLocation = GLES20.glGetUniformLocation(shaderProgram, texName );
+    }
+
     public void createModel(){
 
     	vboVertexHandle = glGenBuffer();
@@ -94,7 +129,7 @@ public class Gl2Mesh implements ColladaMesh {
 		worldViewMatrix = worldViewStack.collapse();
     }
 
-	public void createShader() {
+	public int createDefaultShader() {
 		String vertexShaderSrc =
 			"attribute vec4 aPosition;                     \n" +
 			"attribute vec3 aNormal;                       \n" +
@@ -128,21 +163,26 @@ public class Gl2Mesh implements ColladaMesh {
 
 		int vertexShader = loadShader( GLES20.GL_VERTEX_SHADER, vertexShaderSrc );
 		int fragmentShader = loadShader( GLES20.GL_FRAGMENT_SHADER, fragmentShaderSrc );			
-		shaderProgram = createProgram( vertexShader, fragmentShader );
-
-		modelViewLocation = GLES20.glGetUniformLocation(shaderProgram, "modelViewMatrix");
-		texLocation = GLES20.glGetUniformLocation(shaderProgram, texName );
+		return createProgram( vertexShader, fragmentShader );
 	}
 
-    public void draw(){
-    	MatrixStack worldModelView = new MatrixStack();
-		worldModelView.add(gl2Model.getModelViewMatrix());
-		worldModelView.add(worldViewMatrix);
-		worldViewMatrixBuffer.set( worldModelView.collapse() );
+    public void drawPoints(Matrix4 proj, Matrix4 view){
+    	drawPrimitive(GLES20.GL_POINTS, proj, view);
+    }
 
+    public void drawTriangles(Matrix4 proj, Matrix4 view){
+    	drawPrimitive(GLES20.GL_TRIANGLES, proj, view);
+    }
+
+    public void drawPrimitive(int drawType, Matrix4 proj, Matrix4 view){
+
+    	Matrix4 worldModelView = Matrix4.multiply(view, worldViewMatrix);
+		Matrix4 worldProjModelView = Matrix4.multiply(proj, worldModelView);
+		worldProjViewBuffer.set( worldProjModelView );
+   
 		GLES20.glUseProgram ( shaderProgram );
 
-		GLES20.glUniformMatrix4fv( modelViewLocation, 1, false, worldViewMatrixBuffer.getBuffer() );
+		GLES20.glUniformMatrix4fv( modelViewLocation, 1, false, worldProjViewBuffer.getBuffer() );
 
 		GLES20.glEnableVertexAttribArray( 0 );
 		GLES20.glBindBuffer( GLES20.GL_ARRAY_BUFFER, vboVertexHandle );
@@ -164,9 +204,29 @@ public class Gl2Mesh implements ColladaMesh {
 			GLES20.glUniform1f( texLocation, 0 );
 		}
 
+    	if( shaderObject != null){
+    		shaderObject.begin(worldModelView, proj, numVertices, numNormals, numTexCoords);
+    	}
+
 		GLES20.glBindBuffer( GLES20.GL_ELEMENT_ARRAY_BUFFER, vboIndexHandle );
-		GLES20.glDrawElements( GLES20.GL_TRIANGLES, mIndexBuffer.capacity(), GLES20.GL_UNSIGNED_INT, 0 );
-   	}
+		GLES20.glDrawElements( drawType, mIndexBuffer.capacity(), GLES20.GL_UNSIGNED_INT, 0 );
+
+    	if( shaderObject != null){
+    		shaderObject.end();
+    	}
+
+		if( useTexCoords ){
+			GLES20.glDisableVertexAttribArray( 2 );
+			GLES20.glBindTexture( GLES20.GL_TEXTURE_2D, 0 );
+		}
+
+		if( useNormals ){
+			GLES20.glDisableVertexAttribArray( 1 );
+		}
+
+		GLES20.glDisableVertexAttribArray( 0 );
+		GLES20.glBindBuffer( GLES20.GL_ARRAY_BUFFER, 0 );
+    }
 
 	@Override
 	public void setIndices(int[] indices) {
@@ -178,6 +238,7 @@ public class Gl2Mesh implements ColladaMesh {
 	public void setVertices(float[] verts) {
     	mVertexBuffer = FloatBuffer.wrap( verts );
     	mVertexBuffer.position(0);
+		numVertices = mVertexBuffer.capacity();
 	}
 
 	@Override
@@ -185,6 +246,7 @@ public class Gl2Mesh implements ColladaMesh {
 		mNormalBuffer = FloatBuffer.wrap( normals );
 		mNormalBuffer.position(0);
 		useNormals = true;
+		numNormals = mNormalBuffer.capacity();
 	}
 
 	@Override
@@ -192,6 +254,7 @@ public class Gl2Mesh implements ColladaMesh {
 		mTexCoordsBuffer = FloatBuffer.wrap( coords );
 		mTexCoordsBuffer.position(0);
 		useTexCoords = true;
+		numTexCoords = mTexCoordsBuffer.capacity();
 	}
 
 	@Override
@@ -280,7 +343,7 @@ public class Gl2Mesh implements ColladaMesh {
 	}
 
 	// Helper methods
-    private int glGenBuffer()
+    public static int glGenBuffer()
     {
 		ByteBuffer tmp = ByteBuffer.allocateDirect( 4 );
 		tmp.order(ByteOrder.nativeOrder());			
@@ -289,8 +352,63 @@ public class Gl2Mesh implements ColladaMesh {
 		GLES20.glGenBuffers( 1, intbuf );
 		return intbuf.get(0);
     }
+    
+	public static int glGenFramebuffer()
+	{
+		ByteBuffer tmp = ByteBuffer.allocateDirect( 4 );
+		tmp.order(ByteOrder.nativeOrder());			
+		IntBuffer intbuf = tmp.asIntBuffer();
+		intbuf.position(0);
+		GLES20.glGenFramebuffers( 1, intbuf );
+		return intbuf.get(0);
+	}
 
-	private int loadShader( int type, String source )
+	public static int glGenRenderbuffer()
+	{
+		ByteBuffer tmp = ByteBuffer.allocateDirect( 4 );
+		tmp.order(ByteOrder.nativeOrder());			
+		IntBuffer intbuf = tmp.asIntBuffer();
+		intbuf.position(0);
+		GLES20.glGenRenderbuffers( 1, intbuf );
+		return intbuf.get(0);
+	}
+
+	public static int glGenTexture()
+	{
+		ByteBuffer tmp = ByteBuffer.allocateDirect( 4 );
+		tmp.order(ByteOrder.nativeOrder());			
+		IntBuffer intbuf = tmp.asIntBuffer();
+		intbuf.position(0);
+		GLES20.glGenTextures( 1, intbuf );
+		return intbuf.get(0);
+	}
+
+    public static String readFile(AssetManager assets, String filename){
+        StringBuffer contents = new StringBuffer();
+    	
+		try {
+			InputStream inputStream = assets.open(filename);
+		    BufferedReader in = new BufferedReader(new InputStreamReader(inputStream));
+
+			try {
+				String read = in.readLine();
+			    while (read != null) {
+			    	contents.append(read + "\n");
+			        read = in.readLine();
+			    } 
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
+		    contents.deleteCharAt(contents.length() - 1);
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+	    
+	    return contents.toString();
+    }
+    
+	public static int loadShader( int type, String source )
 	{
 		ByteBuffer tmp = ByteBuffer.allocateDirect(4);
 		tmp.order(ByteOrder.nativeOrder());
@@ -318,7 +436,7 @@ public class Gl2Mesh implements ColladaMesh {
 		return shader;
 	}
 	
-	private int createProgram( int vertexShader, int fragmentShader )
+	public static int createProgram( int vertexShader, int fragmentShader )
 	{
 		int program = GLES20.glCreateProgram();
 		if( program == 0 )
@@ -358,7 +476,7 @@ public class Gl2Mesh implements ColladaMesh {
 		InputStream is = null;
 		
 		try {
-			is = gl2Model.getAssetManager().open(assetName);
+			is = assetMgr.open(assetName);
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
@@ -389,8 +507,17 @@ public class Gl2Mesh implements ColladaMesh {
 		GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
 
 		// Different possible texture parameters, e.g. GL10.GL_CLAMP_TO_EDGE
-		GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_REPEAT);
-		GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_REPEAT);
+		boolean heightPowerOf2 = (bitmap.getHeight() & (bitmap.getHeight() - 1)) == 0;
+		boolean widthPowerOf2 = (bitmap.getWidth() & (bitmap.getWidth() - 1)) == 0;
+		if( heightPowerOf2 && widthPowerOf2 ){
+			GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_REPEAT);
+			GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_REPEAT);
+		}else{
+			// If the texture is not a power of two then use clamp to edge...
+			// otherwise npot with GL_REPEAT fails on the Shield.
+			GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+			GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+		}
 
 		// Use the Android GLUtils to specify a two-dimensional texture image from our bitmap
 		GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bitmap, 0);
@@ -415,5 +542,51 @@ public class Gl2Mesh implements ColladaMesh {
 	@Override
 	public void scale(float x, float y, float z) {
 		worldViewStack.add( Matrix4.scale(x, y, z) );
+	}
+
+	@Override
+	public void transform(ColladaMatrix4f m) {
+		Matrix4 result = new Matrix4();
+		
+		result.matrix[0] = m.m11;
+		result.matrix[1] = m.m21;
+		result.matrix[2] = m.m31;
+		result.matrix[3] = m.m41;
+		result.matrix[4] = m.m12;
+		result.matrix[5] = m.m22;
+		result.matrix[6] = m.m32;
+		result.matrix[7] = m.m42;
+		result.matrix[8] = m.m13;
+		result.matrix[9] = m.m23;
+		result.matrix[10] = m.m33;
+		result.matrix[11] = m.m43;
+		result.matrix[12] = m.m14;
+		result.matrix[13] = m.m24;
+		result.matrix[14] = m.m34;
+		result.matrix[15] = m.m44;
+
+		worldViewStack.add( result );
+	}
+
+	@Override
+	public void setBounds(float minx, float maxx,
+			float miny, float maxy,
+			float minz, float maxz) {
+		minX = minx;
+		maxX = maxx;
+		minY = miny;
+		maxY = maxy;
+		minZ = minz;
+		maxZ = maxz;		
+	}
+
+	@Override
+	public boolean hitTestBox(float vx, float vy, Matrix4 proj, Matrix4 view) {
+		return false;
+	}
+
+	@Override
+	public boolean hitTestSphere(float vx, float vy, Matrix4 proj, Matrix4 view) {
+		return false;
 	}
 }

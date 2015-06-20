@@ -1,0 +1,1 @@
+Demonstration of a custom OpenGL ES 2.0 engine that renders  textured COLLADA models and bitmap fonts. The models were exported from Blender and Maya to COLLADA v1.4 dae files. Android application running on Samsung Galaxy S3 with Android 4.1.2.

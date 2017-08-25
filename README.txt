@@ -1,4 +1,4 @@
-Copyright (C) 2014 Adam Critchley
+Copyright (C) 2014-2017 Adam Critchley
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -8,6 +8,14 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 Release Notes:
 
+1.0:
+* Tested with Android 7.0 on Nexus 6.
+* Compiled on macOS Sierra with Android Studio v2.3.0.
+* Models are copyright respective of their original authors.
+* Collada 1.4 formatted models were exported from Maya and Blender.
+* Released in Google Play Store as "PFP Engine Demo".
+
+Beta:
 * Application tested with Android 4.1.2 on Samsung Galaxy S3 SGH-T999.
 * Compiled on Windows 7 with Eclipse Juno ADT bundle (Version 23.0.2.1259578).
 * Models are copyright respective of their original authors.

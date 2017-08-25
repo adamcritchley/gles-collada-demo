@@ -71,7 +71,7 @@ public class GlColladaDemoActivity extends Activity {
 	private DecimalFormat threeDec;
 	private FontObject ofont;
 	private String changeString = "(0.000)%";
-    private long currentScreen = 2;
+    private long currentScreen = 0;
     private MGTextAABB models_view = null;
     private MGTextAABB mini_game = null;
     private MGText label_view = null;

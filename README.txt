@@ -14,6 +14,7 @@ Release Notes:
 * Models are copyright respective of their original authors.
 * Collada 1.4 formatted models were exported from Maya and Blender.
 * Released in Google Play Store as "PFP Engine Demo".
+https://play.google.com/store/apps/details?id=com.pfpgames.glcolladademo
 
 Beta:
 * Application tested with Android 4.1.2 on Samsung Galaxy S3 SGH-T999.

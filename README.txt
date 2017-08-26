@@ -15,6 +15,8 @@ Release Notes:
 * Collada 1.4 formatted models were exported from Maya and Blender.
 * Released in Google Play Store as "PFP Engine Demo".
 https://play.google.com/store/apps/details?id=com.pfpgames.glcolladademo
+* This codebase was used to create Groovy Galaxy on the Google Play store.
+https://play.google.com/store/apps/details?id=com.pfpgames.groovygalaxy
 
 Beta:
 * Application tested with Android 4.1.2 on Samsung Galaxy S3 SGH-T999.

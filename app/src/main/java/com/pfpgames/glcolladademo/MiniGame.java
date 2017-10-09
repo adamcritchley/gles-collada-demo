@@ -19,7 +19,7 @@ import android.content.res.AssetManager;
 public class MiniGame{
 
 	private final float THETA_SCALE = 0.2f;
-	private final float TWINKLE_FACTOR = 0.0845569508577407777468194599525f;
+	private final float TWINKLE_FACTOR = 0.15f;
     private final float ROLLING_SCORE_FACTOR = 0.05f;
     private final float MAX_SPAWN_RATE = 4.0f;
     private final float MIN_SPAWN_RATE = 0.25f;

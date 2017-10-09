@@ -35,9 +35,9 @@ public class GlColladaDemoActivity extends Activity {
 	private static final int NUM_MODELS = 5;
 
 	private static final String MODEL_TO_LOAD1 = "seymour.dae";
-	private static final String MODEL_TO_LOAD2 = "textured_monkey.dae";
+    private static final String MODEL_TO_LOAD2 = "x-fighter.dae";
 	private static final String MODEL_TO_LOAD3 = "textured_helicopter.dae";
-	private static final String MODEL_TO_LOAD4 = "textured_cube.dae";
+    private static final String MODEL_TO_LOAD4 = "textured_monkey.dae";
 	private static final String MODEL_TO_LOAD5 = "torus_tris.dae";
 	private static final String FONTS_TO_LOAD = "fonts.xml";
 
@@ -54,7 +54,7 @@ public class GlColladaDemoActivity extends Activity {
     private AssetManager assetMgr;
     private ColladaHandler hcollada;
     private FontHandler hfonts;
-    private Gl2Model[] gl2Model;
+    private Gl2Model[] gl2Model = null;
     private float[] modelSizeBias;
 	private FontLibrary libfonts;
     private Gl2Model[] textList = null;
@@ -79,23 +79,25 @@ public class GlColladaDemoActivity extends Activity {
     private float viewportHeightDiv2 = 0.0f;
     private MiniGame minigame_level = null;
     private DemoRenderer glrenderer = null;
+    private Gl2Model pflogo = null;
+    private Matrix4 pflogoTForm = null;
 
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         assetMgr = getResources().getAssets();
 
-        gl2Model = new Gl2Model[NUM_MODELS];
-        for(int i=0; i < NUM_MODELS; i++){
-            gl2Model[i] = new Gl2Model();
-        }
-
         modelSizeBias = new float[NUM_MODELS];
         modelSizeBias[0] = 0.0f;
-        modelSizeBias[1] = -3.0f;
+        modelSizeBias[1] = -3.4f;
         modelSizeBias[2] = -3.5f;
-        modelSizeBias[3] = -2.0f;
+        modelSizeBias[3] = -3.0f;
         modelSizeBias[4] = -2.5f;
+
+        gl2Model = new Gl2Model[NUM_MODELS];
+        for(int i=0; i < NUM_MODELS; i++){
+            gl2Model[i] = null;
+        }
 
         textList = new Gl2Model[255];
         for(int i=0; i<255; i++){
@@ -116,7 +118,11 @@ public class GlColladaDemoActivity extends Activity {
         Matrix4.setIdentity(modelViewMatrix);
         modelViewMatrix.scaleThis(z, z, z);
         Matrix4.setIdentity(projMatrix);
-        
+
+        pflogoTForm = Matrix4.translate(0.0f, 0.0f, -3.5f);
+        pflogoTForm.rotateThis(90.0f, 0.0f, 1.0f, 0.0f);
+        pflogoTForm.scaleThis(3.7f, 3.7f, 3.7f);
+
         threeDec = new DecimalFormat("0.000");
     	threeDec.setGroupingUsed(false);
 
@@ -168,18 +174,19 @@ public class GlColladaDemoActivity extends Activity {
 
         // Do the screen checks first...
         if( currentScreen == 0 ) {
+        }else if ( currentScreen == 1 ){
             // If a touch is moved on the screen
             if (event.getAction() == MotionEvent.ACTION_MOVE) {
                 // Do nothing...
             } else if (event.getAction() == MotionEvent.ACTION_DOWN) {
 
                 if (models_view != null && models_view.hitTest(screen_x, screen_y)) {
-                    currentScreen = 1;
-                } else if (mini_game != null && mini_game.hitTest(screen_x, screen_y)) {
                     currentScreen = 2;
+                } else if (mini_game != null && mini_game.hitTest(screen_x, screen_y)) {
+                    currentScreen = 3;
                 }
             }
-        }else if (currentScreen == 1 ){
+        }else if (currentScreen == 2 ){
             // If a touch is moved on the screen
             if (event.getAction() == MotionEvent.ACTION_MOVE) {
                 if (event.getPointerCount() == 2) {
@@ -237,7 +244,7 @@ public class GlColladaDemoActivity extends Activity {
             stack.add( Matrix4.rotate(-yrot, 1.0f, 0.0f, 0.0f) );
             stack.add( Matrix4.scale(biased_z, biased_z, biased_z) );
             modelViewMatrix = stack.collapse();
-        }else if( currentScreen == 2 ){
+        }else if( currentScreen == 3 ){
             // The event object is re-used by Android every touch event
             // so we'll need to make our own copy to avoid having the
             // pass by ref copy of MotionEvent changed from under us.
@@ -255,8 +262,8 @@ public class GlColladaDemoActivity extends Activity {
 
 	@Override
     public void onBackPressed() {
-        if( currentScreen > 0 ) {
-            currentScreen = 0;
+        if( currentScreen > 1 && currentScreen != 0 ) {
+            currentScreen = 1;
         }else{
             finish();
         }
@@ -280,6 +287,10 @@ public class GlColladaDemoActivity extends Activity {
 		private long startTime;
 		private long framesDrawn = 0;
         private long diffTime = 1;
+        private int totalLoaded = 0;
+        private float percentLoaded = 0.0f;
+        private final int TOTAL_MODELS = 79;
+        private final float LOAD_STEP = 1.0F / TOTAL_MODELS;
 
 		public void onDrawFrame(GL10 unused)
 		{
@@ -294,12 +305,26 @@ public class GlColladaDemoActivity extends Activity {
 			GLES20.glFrontFace( GLES20.GL_CCW );
 			GLES20.glViewport ( 0, 0, viewportWidth, viewportHeight  );
 
-            if( currentScreen == 0) {
+            if( currentScreen == 0 ) {
+                totalLoaded++;
+                percentLoaded += LOAD_STEP;
+                loadNext();
+
+                // Draw the progress indicator
+                ofont.draw(-0.75f, -0.75f, 0.0f, 0.05f, Integer.toString((int)(percentLoaded*100.0f)) + "%" );
+
+                // Draw the splash image
+                pflogo.drawTriangles(projMatrix, pflogoTForm);
+
+                if( totalLoaded == TOTAL_MODELS ) {
+                    currentScreen = 1;
+                }
+            }else if( currentScreen == 1 ) {
                 // Draw the demo selection screen
                 label_view.draw(projMatrix);
                 models_view.draw(projMatrix);
                 mini_game.draw(projMatrix);
-            }else if( currentScreen == 1) {
+            }else if( currentScreen == 2) {
                 // Draw the model preview screen
                 gl2Model[curModel].drawTriangles(projMatrix, modelViewMatrix);
 
@@ -309,7 +334,7 @@ public class GlColladaDemoActivity extends Activity {
                 ofont.draw(-0.85f, 0.75f, 0.0f, 0.025f, sizeText);
                 String changeText = "Long swipe right to change " + changeString;
                 ofont.draw(-0.85f, 0.9f, 0.0f, 0.025f, changeText );
-            }else if( currentScreen == 2) {
+            }else if( currentScreen == 3) {
                 // Play our mini game!
                 float draw_time = ((float)(System.currentTimeMillis() - startTime)) / 1000.0f;
                 minigame_level.drawStage(projMatrix, viewportWidth, viewportHeight, draw_time);
@@ -333,358 +358,551 @@ public class GlColladaDemoActivity extends Activity {
             projMatrix = Matrix4.frustum(-ratio, ratio, -1, 1, 1, 10);
 		}
 
-		public void onSurfaceCreated(GL10 unused, EGLConfig config)
-		{
-			try {
-				gl2Model[0].setAssetManager(assetMgr);
-				gl2Model[0].setFlipTextureV(true);
-				hcollada.parseDae(assetMgr.open(MODEL_TO_LOAD1), gl2Model[0]);
-				gl2Model[0].buildModel();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+		private void loadNext()
+        {
+            try {
+                hfonts.parseFonts(assetMgr.open(FONTS_TO_LOAD), libfonts);
+                ofont = libfonts.createFont("system", assetMgr);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
 
-			try {
-				gl2Model[1].setAssetManager(assetMgr);
-				gl2Model[1].setFlipTextureV(true);
-				hcollada.parseDae(assetMgr.open(MODEL_TO_LOAD2), gl2Model[1]);
-				gl2Model[1].buildModel();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-			
-			try {
-				gl2Model[2].setAssetManager(assetMgr);
-				gl2Model[2].setFlipTextureV(true);
-				hcollada.parseDae(assetMgr.open(MODEL_TO_LOAD3), gl2Model[2]);
-				gl2Model[2].buildModel();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+            if( pflogo == null ) {
+                try {
+                    pflogo = new Gl2Model();
+                    pflogo.setAssetManager(assetMgr);
+                    pflogo.setFlipTextureV(true);
+                    hcollada.parseDae(assetMgr.open("pflogo.dae"), pflogo);
+                    pflogo.buildModel();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
 
-			try {
-				gl2Model[3].setAssetManager(assetMgr);
-				gl2Model[3].setFlipTextureV(true);
-				hcollada.parseDae(assetMgr.open(MODEL_TO_LOAD4), gl2Model[3]);
-				gl2Model[3].buildModel();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+            if( gl2Model[0] == null ) {
+                try {
+                    gl2Model[0] = new Gl2Model();
+                    gl2Model[0].setAssetManager(assetMgr);
+                    gl2Model[0].setFlipTextureV(true);
+                    hcollada.parseDae(assetMgr.open(MODEL_TO_LOAD1), gl2Model[0]);
+                    gl2Model[0].buildModel();
+                    return;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
 
-			try {
-				gl2Model[4].setAssetManager(assetMgr);
-				gl2Model[4].setFlipTextureV(true);
-				hcollada.parseDae(assetMgr.open(MODEL_TO_LOAD5), gl2Model[4]);
-				gl2Model[4].buildModel();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+            if( gl2Model[1] == null ) {
+                try {
+                    gl2Model[1] = new Gl2Model();
+                    gl2Model[1].setAssetManager(assetMgr);
+                    gl2Model[1].setFlipTextureV(true);
+                    hcollada.parseDae(assetMgr.open(MODEL_TO_LOAD2), gl2Model[1]);
+                    gl2Model[1].buildModel();
+
+                    return;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+            if( gl2Model[2] == null ) {
+                try {
+                    gl2Model[2] = new Gl2Model();
+                    gl2Model[2].setAssetManager(assetMgr);
+                    gl2Model[2].setFlipTextureV(true);
+                    hcollada.parseDae(assetMgr.open(MODEL_TO_LOAD3), gl2Model[2]);
+                    gl2Model[2].buildModel();
+
+                    return;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+            if( gl2Model[3] == null ) {
+                try {
+                    gl2Model[3] = new Gl2Model();
+                    gl2Model[3].setAssetManager(assetMgr);
+                    gl2Model[3].setFlipTextureV(true);
+                    hcollada.parseDae(assetMgr.open(MODEL_TO_LOAD4), gl2Model[3]);
+                    gl2Model[3].buildModel();
+
+                    return;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+            if( gl2Model[4] == null ) {
+                try {
+                    gl2Model[4] = new Gl2Model();
+                    gl2Model[4].setAssetManager(assetMgr);
+                    gl2Model[4].setFlipTextureV(true);
+                    hcollada.parseDae(assetMgr.open(MODEL_TO_LOAD5), gl2Model[4]);
+                    gl2Model[4].buildModel();
+
+                    return;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
 
             if( textList['a'] == null ) {
                 buildCharacter(hcollada, assetMgr, "a.dae", 'a', 0.41f);
+
+                return;
             }
 
             if( textList['b'] == null ) {
                 buildCharacter(hcollada, assetMgr, "b.dae", 'b', 0.44f);
+
+                return;
             }
 
             if( textList['c'] == null ) {
                 buildCharacter(hcollada, assetMgr, "c.dae", 'c', 0.42f);
+
+                return;
             }
 
             if( textList['d'] == null ) {
                 buildCharacter(hcollada, assetMgr, "d.dae", 'd', 0.46f);
+
+                return;
             }
 
             if( textList['e'] == null ) {
                 buildCharacter(hcollada, assetMgr, "e.dae", 'e', 0.52f);
+
+                return;
             }
 
             if( textList['f'] == null ) {
                 buildCharacter(hcollada, assetMgr, "f.dae", 'f', 0.36f);
+
+                return;
             }
 
             if( textList['g'] == null ) {
                 buildCharacter(hcollada, assetMgr, "g.dae", 'g', 0.44f);
+
+                return;
             }
 
             if( textList['h'] == null ) {
                 buildCharacter(hcollada, assetMgr, "h.dae", 'h', 0.46f);
+
+                return;
             }
 
             if( textList['i'] == null ) {
                 buildCharacter(hcollada, assetMgr, "i.dae", 'i', 0.22f);
+
+                return;
             }
 
             if( textList['j'] == null ) {
                 buildCharacter(hcollada, assetMgr, "j.dae", 'j', 0.22f);
+
+                return;
             }
 
             if( textList['k'] == null ) {
                 buildCharacter(hcollada, assetMgr, "k.dae", 'k', 0.41f);
+
+                return;
             }
 
             if( textList['l'] == null ) {
                 buildCharacter(hcollada, assetMgr, "l.dae", 'l', 0.24f);
+
+                return;
             }
 
             if( textList['m'] == null ) {
                 buildCharacter(hcollada, assetMgr, "m.dae", 'm', 0.72f);
+
+                return;
             }
 
             if( textList['n'] == null ) {
                 buildCharacter(hcollada, assetMgr, "n.dae", 'n', 0.52f);
+
+                return;
             }
 
             if( textList['o'] == null ) {
                 buildCharacter(hcollada, assetMgr, "o.dae", 'o', 0.54f);
+
+                return;
             }
 
             if( textList['p'] == null ) {
                 buildCharacter(hcollada, assetMgr, "p.dae", 'p', 0.48f);
+
+                return;
             }
 
             if( textList['q'] == null ) {
                 buildCharacter(hcollada, assetMgr, "q.dae", 'q', 0.44f);
+
+                return;
             }
 
             if( textList['r'] == null ) {
                 buildCharacter(hcollada, assetMgr, "r.dae", 'r', 0.40f);
+
+                return;
             }
 
             if( textList['s'] == null ) {
                 buildCharacter(hcollada, assetMgr, "s.dae", 's', 0.36f);
+
+                return;
             }
 
             if( textList['t'] == null ) {
                 buildCharacter(hcollada, assetMgr, "t.dae", 't', 0.36f);
+
+                return;
             }
 
             if( textList['u'] == null ) {
                 buildCharacter(hcollada, assetMgr, "u.dae", 'u', 0.45f);
+
+                return;
             }
 
             if( textList['v'] == null ) {
                 buildCharacter(hcollada, assetMgr, "v.dae", 'v', 0.42f);
+
+                return;
             }
 
             if( textList['w'] == null ) {
                 buildCharacter(hcollada, assetMgr, "w.dae", 'w', 0.68f);
+
+                return;
             }
 
             if( textList['x'] == null ) {
                 buildCharacter(hcollada, assetMgr, "x.dae", 'x', 0.48f);
+
+                return;
             }
 
             if( textList['y'] == null ) {
                 buildCharacter(hcollada, assetMgr, "y.dae", 'y', 0.41f);
+
+                return;
             }
 
             if( textList['z'] == null ) {
                 buildCharacter(hcollada, assetMgr, "z.dae", 'z', 0.41f);
+
+                return;
             }
 
             if( textList['A'] == null ) {
                 buildCharacter(hcollada, assetMgr, "A_up.dae", 'A', 0.63f);
+
+                return;
             }
 
             if( textList['B'] == null ) {
                 buildCharacter(hcollada, assetMgr, "B_up.dae", 'B', 0.55f);
+
+                return;
             }
 
             if( textList['C'] == null ) {
                 buildCharacter(hcollada, assetMgr, "C_up.dae", 'C', 0.66f);
+
+                return;
             }
 
             if( textList['D'] == null ) {
                 buildCharacter(hcollada, assetMgr, "D_up.dae", 'D', 0.68f);
+
+                return;
             }
 
             if( textList['E'] == null ) {
                 buildCharacter(hcollada, assetMgr, "E_up.dae", 'E', 0.52f);
+
+                return;
             }
 
             if( textList['F'] == null ) {
                 buildCharacter(hcollada, assetMgr, "F_up.dae", 'F', 0.52f);
+
+                return;
             }
 
             if( textList['G'] == null ) {
                 buildCharacter(hcollada, assetMgr, "G_up.dae", 'G', 0.68f);
+
+                return;
             }
 
             if( textList['H'] == null ) {
                 buildCharacter(hcollada, assetMgr, "H_up.dae", 'H', 0.63f);
+
+                return;
             }
 
             if( textList['I'] == null ) {
                 buildCharacter(hcollada, assetMgr, "I_up.dae", 'I', 0.30f);
+
+                return;
             }
 
             if( textList['J'] == null ) {
                 buildCharacter(hcollada, assetMgr, "J_up.dae", 'J', 0.32f);
+
+                return;
             }
 
             if( textList['K'] == null ) {
                 buildCharacter(hcollada, assetMgr, "K_up.dae", 'K', 0.65f);
+
+                return;
             }
 
             if( textList['L'] == null ) {
                 buildCharacter(hcollada, assetMgr, "L_up.dae", 'L', 0.55f);
+
+                return;
             }
 
             if( textList['M'] == null ) {
                 buildCharacter(hcollada, assetMgr, "M_up.dae", 'M', 0.78f);
+
+                return;
             }
 
             if( textList['N'] == null ) {
                 buildCharacter(hcollada, assetMgr, "N_up.dae", 'N', 0.74f);
+
+                return;
             }
 
             if( textList['O'] == null ) {
                 buildCharacter(hcollada, assetMgr, "O_up.dae", 'O', 0.78f);
+
+                return;
             }
 
             if( textList['P'] == null ) {
                 buildCharacter(hcollada, assetMgr, "P_up.dae", 'P', 0.52f);
+
+                return;
             }
 
             if( textList['Q'] == null ) {
                 buildCharacter(hcollada, assetMgr, "Q_up.dae", 'Q', 0.74f);
+
+                return;
             }
 
             if( textList['R'] == null ) {
                 buildCharacter(hcollada, assetMgr, "R_up.dae", 'R', 0.58f);
+
+                return;
             }
 
             if( textList['S'] == null ) {
                 buildCharacter(hcollada, assetMgr, "S_up.dae", 'S', 0.48f);
+
+                return;
             }
 
             if( textList['T'] == null ) {
                 buildCharacter(hcollada, assetMgr, "T_up.dae", 'T', 0.56f);
+
+                return;
             }
 
             if( textList['U'] == null ) {
                 buildCharacter(hcollada, assetMgr, "U_up.dae", 'U', 0.68f);
+
+                return;
             }
 
             if( textList['V'] == null ) {
                 buildCharacter(hcollada, assetMgr, "V_up.dae", 'V', 0.62f);
+
+                return;
             }
 
             if( textList['W'] == null ) {
                 buildCharacter(hcollada, assetMgr, "W_up.dae", 'W', 0.92f);
+
+                return;
             }
 
             if( textList['X'] == null ) {
                 buildCharacter(hcollada, assetMgr, "X_up.dae", 'X', 0.66f);
+
+                return;
             }
 
             if( textList['Y'] == null ) {
                 buildCharacter(hcollada, assetMgr, "Y_up.dae", 'Y', 0.58f);
+
+                return;
             }
 
             if( textList['Z'] == null ) {
                 buildCharacter(hcollada, assetMgr, "Z_up.dae", 'Z', 0.58f);
+
+                return;
             }
 
             if( textList['1'] == null ) {
                 buildCharacter(hcollada, assetMgr, "1.dae", '1', 0.50f);
+
+                return;
             }
 
             if( textList['2'] == null ) {
                 buildCharacter(hcollada, assetMgr, "2.dae", '2', 0.60f);
+
+                return;
             }
 
             if( textList['3'] == null ) {
                 buildCharacter(hcollada, assetMgr, "3.dae", '3', 0.58f);
+
+                return;
             }
 
             if( textList['4'] == null ) {
                 buildCharacter(hcollada, assetMgr, "4.dae", '4', 0.58f);
+
+                return;
             }
 
             if( textList['5'] == null ) {
                 buildCharacter(hcollada, assetMgr, "5.dae", '5', 0.58f);
+
+                return;
             }
 
             if( textList['6'] == null ) {
                 buildCharacter(hcollada, assetMgr, "6.dae", '6', 0.58f);
+
+                return;
             }
 
             if( textList['7'] == null ) {
                 buildCharacter(hcollada, assetMgr, "7.dae", '7', 0.58f);
+
+                return;
             }
 
             if( textList['8'] == null ) {
                 buildCharacter(hcollada, assetMgr, "8.dae", '8', 0.58f);
+
+                return;
             }
 
             if( textList['9'] == null ) {
                 buildCharacter(hcollada, assetMgr, "9.dae", '9', 0.58f);
+
+                return;
             }
 
             if( textList['0'] == null ) {
                 buildCharacter(hcollada, assetMgr, "0.dae", '0', 0.58f);
+
+                return;
             }
 
             if( textList['\''] == null ) {
                 buildCharacter(hcollada, assetMgr, "apostrophe.dae", '\'', 0.30f);
+
+                return;
             }
 
             if( textList['!'] == null ) {
                 buildCharacter(hcollada, assetMgr, "bang.dae", '!', 0.52f);
+
+                return;
             }
 
             if( textList[':'] == null ) {
                 buildCharacter(hcollada, assetMgr, "colon.dae", ':', 0.52f);
+
+                return;
             }
 
             if( textList[','] == null ) {
                 buildCharacter(hcollada, assetMgr, "comma.dae", ',', 0.44f);
+
+                return;
             }
 
             if( textList['.'] == null ) {
                 buildCharacter(hcollada, assetMgr, "period.dae", '.', 0.30f);
+
+                return;
             }
 
             if( textList['?'] == null ) {
                 buildCharacter(hcollada, assetMgr, "question.dae", '?', 0.52f);
+
+                return;
             }
 
             if( textList['-'] == null ) {
                 buildCharacter(hcollada, assetMgr, "hyphen.dae", '-', 0.38f);
+
+                return;
             }
 
             if( textList['%'] == null ) {
                 buildCharacter(hcollada, assetMgr, "percent.dae", '%', 0.38f);
+
+                return;
             }
 
-            label_view = new MGText(textList, pitchList, "Choose a demo:", 0.0f, 2.0f, -4.0f, 1.0f);
-            label_view.setOffset(-label_view.getWidth()/2.0f, label_view.getY());
-            label_view.setColor(new Vector4(1.0f, 1.0f, 1.0f, 0.0f));
+            if( label_view == null ) {
+                label_view = new MGText(textList, pitchList, "Choose a demo:", 0.0f, 2.0f, -4.0f, 1.0f);
+                label_view.setOffset(-label_view.getWidth() / 2.0f, label_view.getY());
+                label_view.setColor(new Vector4(1.0f, 1.0f, 1.0f, 0.0f));
 
-            // Create an Axis Aligned Bounding Box for our text
-            models_view = new MGTextAABB(textList, pitchList, "Models", 0.0f, 0.5f, -4.0f, 0.75f);
-            // Center the model
-            models_view.setOffset(-models_view.getWidth()/2.0f, models_view.getY());
-            models_view.setColor(new Vector4(1.0f, 1.0f, 1.0f, 0.0f));
+                return;
+            }
 
-            // Create an Axis Aligned Bounding Box for our text
-            mini_game = new MGTextAABB(textList, pitchList, "Minigame", 0.0f, -0.5f, -4.0f, 0.75f);
-            // Center the model
-            mini_game.setOffset(-mini_game.getWidth()/2.0f, mini_game.getY());
-            mini_game.setColor(new Vector4(1.0f, 1.0f, 1.0f, 0.0f));
+            if( models_view == null ) {
+                // Create an Axis Aligned Bounding Box for our text
+                models_view = new MGTextAABB(textList, pitchList, "Models", 0.0f, 0.5f, -4.0f, 0.75f);
+                // Center the model
+                models_view.setOffset(-models_view.getWidth() / 2.0f, models_view.getY());
+                models_view.setColor(new Vector4(1.0f, 1.0f, 1.0f, 0.0f));
 
-			try {
-				hfonts.parseFonts(assetMgr.open(FONTS_TO_LOAD), libfonts);
-				ofont = libfonts.createFont("system", assetMgr);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+                return;
+            }
 
-            minigame_level = new MiniGame(hcollada, assetMgr, pitchList, textList);
+            if( mini_game == null ) {
+                // Create an Axis Aligned Bounding Box for our text
+                mini_game = new MGTextAABB(textList, pitchList, "Minigame", 0.0f, -0.5f, -4.0f, 0.75f);
+                // Center the model
+                mini_game.setOffset(-mini_game.getWidth() / 2.0f, mini_game.getY());
+                mini_game.setColor(new Vector4(1.0f, 1.0f, 1.0f, 0.0f));
 
+                return;
+            }
+
+            if( minigame_level == null ) {
+                minigame_level = new MiniGame(hcollada, assetMgr, pitchList, textList);
+            }
+        }
+
+		public void onSurfaceCreated(GL10 unused, EGLConfig config)
+		{
 			GLES20.glDisable(GLES20.GL_DITHER);				// Disable dithering ( NEW )
 			GLES20.glEnable(GLES20.GL_TEXTURE_2D);			// Enable Texture Mapping
 			GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f); 	// Black Background

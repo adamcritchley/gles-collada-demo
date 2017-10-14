@@ -7,8 +7,8 @@ android {
         applicationId "com.pfpgames.glcolladademo"
         minSdkVersion 19
         targetSdkVersion 26
-        versionCode 150
-        versionName "1.5"
+        versionCode 175
+        versionName “1.75"
     }
     buildTypes {
         debug {

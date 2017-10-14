@@ -36,9 +36,9 @@ public class GlColladaDemoActivity extends Activity {
 
 	private static final String MODEL_TO_LOAD1 = "seymour.dae";
     private static final String MODEL_TO_LOAD2 = "x-fighter.dae";
-	private static final String MODEL_TO_LOAD3 = "textured_helicopter.dae";
-    private static final String MODEL_TO_LOAD4 = "textured_monkey.dae";
-	private static final String MODEL_TO_LOAD5 = "torus_tris.dae";
+	private static final String MODEL_TO_LOAD3 = "guitar.dae";
+    private static final String MODEL_TO_LOAD4 = "tree.dae";
+	private static final String MODEL_TO_LOAD5 = "blender.dae";
 	private static final String FONTS_TO_LOAD = "fonts.xml";
 
 	private static final double CHANGE_THRESHOLD = 0.7;
@@ -81,6 +81,7 @@ public class GlColladaDemoActivity extends Activity {
     private DemoRenderer glrenderer = null;
     private Gl2Model pflogo = null;
     private Matrix4 pflogoTForm = null;
+    private boolean firstFrame = true;
 
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -91,7 +92,7 @@ public class GlColladaDemoActivity extends Activity {
         modelSizeBias[0] = 0.0f;
         modelSizeBias[1] = -3.4f;
         modelSizeBias[2] = -3.5f;
-        modelSizeBias[3] = -3.0f;
+        modelSizeBias[3] = -3.5f;
         modelSizeBias[4] = -2.5f;
 
         gl2Model = new Gl2Model[NUM_MODELS];
@@ -181,6 +182,7 @@ public class GlColladaDemoActivity extends Activity {
             } else if (event.getAction() == MotionEvent.ACTION_DOWN) {
 
                 if (models_view != null && models_view.hitTest(screen_x, screen_y)) {
+                    firstFrame = true;
                     currentScreen = 2;
                 } else if (mini_game != null && mini_game.hitTest(screen_x, screen_y)) {
                     currentScreen = 3;
@@ -282,7 +284,6 @@ public class GlColladaDemoActivity extends Activity {
 
     class DemoRenderer implements Renderer
     {
-    	private boolean firstFrame = true;
     	private int viewportWidth, viewportHeight;
 		private long startTime;
 		private long framesDrawn = 0;
@@ -294,11 +295,6 @@ public class GlColladaDemoActivity extends Activity {
 
 		public void onDrawFrame(GL10 unused)
 		{
-			if( firstFrame ){
-				startTime = System.currentTimeMillis();
-				firstFrame = false;
-			}
-
 			GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 			GLES20.glClear( GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT );
 
@@ -325,6 +321,11 @@ public class GlColladaDemoActivity extends Activity {
                 models_view.draw(projMatrix);
                 mini_game.draw(projMatrix);
             }else if( currentScreen == 2) {
+                if( firstFrame ){
+                    startTime = System.currentTimeMillis();
+                    firstFrame = false;
+                }
+
                 // Draw the model preview screen
                 gl2Model[curModel].drawTriangles(projMatrix, modelViewMatrix);
 
@@ -334,16 +335,16 @@ public class GlColladaDemoActivity extends Activity {
                 ofont.draw(-0.85f, 0.75f, 0.0f, 0.025f, sizeText);
                 String changeText = "Long swipe right to change " + changeString;
                 ofont.draw(-0.85f, 0.9f, 0.0f, 0.025f, changeText );
+
+                long nowTime = System.currentTimeMillis();
+                diffTime = nowTime - startTime;
+
+                framesDrawn++;
             }else if( currentScreen == 3) {
                 // Play our mini game!
                 float draw_time = ((float)(System.currentTimeMillis() - startTime)) / 1000.0f;
                 minigame_level.drawStage(projMatrix, viewportWidth, viewportHeight, draw_time);
             }
-
-			long nowTime = System.currentTimeMillis();
-			diffTime = nowTime - startTime;
-
-			framesDrawn++;
 		}
 
 		public void onSurfaceChanged(GL10 unused, int width, int height)

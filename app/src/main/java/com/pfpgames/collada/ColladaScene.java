@@ -1,5 +1,7 @@
 package com.pfpgames.collada;
 
+import com.pfpgames.glgraphics.ProgressCallback;
+
 import java.util.ArrayList;
 
 public class ColladaScene {
@@ -22,10 +24,10 @@ public class ColladaScene {
 		return node;
 	}
 	
-	public void buildScene(ColladaModel model) {
+	public void buildScene(ColladaModel model, ProgressCallback progresscb) {
 		for( ColladaSceneNode node : nodes ){
 			if( node.isGeometry() ){
-				node.buildSceneNode(model);
+				node.buildSceneNode(model, progresscb);
 			}
 		}
 	}

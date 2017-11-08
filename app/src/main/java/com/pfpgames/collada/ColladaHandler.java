@@ -1,5 +1,7 @@
 package com.pfpgames.collada;
 
+import com.pfpgames.glgraphics.ProgressCallback;
+
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
@@ -7,6 +9,7 @@ import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.DefaultHandler;
 
 import java.io.InputStream;
+import java.nio.FloatBuffer;
 import java.util.regex.Pattern;
 
 import javax.xml.parsers.SAXParser;
@@ -16,9 +19,19 @@ public class ColladaHandler {
     private SAXParserFactory spf;
     private SAXParser sp;
     private XMLReader xr;
+    private ProgressCallback pcb;
 
-    public void parseDae(InputStream input, ColladaModel model) {
+	public void parseDae(InputStream input, ColladaModel model) {
+		parseDae(input, model, null);
+	}
+
+    public void parseDae(InputStream input, ColladaModel model, ProgressCallback progresscb) {
     	ColladaObjects obj = new ColladaObjects();
+        pcb = progresscb;
+
+		if( pcb != null ){
+            pcb.reportProgress(ProgressCallback.PROGRESS_STAGE.PRELOAD, 0, 0, 0);
+        }
 
         try {
             spf = SAXParserFactory.newInstance();
@@ -31,7 +44,11 @@ public class ColladaHandler {
         }
 
         // Build the model from the COLLADA file...
-        obj.buildModel(model);
+        obj.buildModel(model, pcb);
+
+        if( pcb != null ){
+            pcb.reportProgress(ProgressCallback.PROGRESS_STAGE.POSTLOAD, 0, 0, 0);
+        }
     }
 
     private String objRefToObj(String ref){
@@ -269,16 +286,27 @@ public class ColladaHandler {
     		                
     		                if (localName.equalsIgnoreCase("float_array")){
     		                    inFloatArray = false;
-    				        	float[] arrayData = new float[floatSize];
+    				        	final float[] arrayData = new float[floatSize];
     		                	Pattern p = Pattern.compile("\\s+");
     		                	String[] temp = p.split(floatText.trim());
     		                    if( (floatSize != temp.length) && (floatSize > 0) ){
     		                    	throw new SAXException("Inconsistent source size for " + srcObj.getId());
     		                    }
 
-    							for (int i=0; i < temp.length; i++){
-    								arrayData[i] = Float.parseFloat(temp[i]);
-    							}
+                                if( pcb != null ){
+                                    ProgressCallback.DataParser parser
+                                            = pcb.new DataParser() {
+                                        @Override
+                                        public void setValue(int i, String s) {
+                                            arrayData[i] = Float.parseFloat(s);
+                                        }
+                                    };
+                                    parser.parse(temp);
+                                }else{
+                                    for (int i=0; i < temp.length; i++){
+                                        arrayData[i] = Float.parseFloat(temp[i]);
+                                    }
+                                }
 
     							ColladaSource.FloatArray floatArray = srcObj.getFloatArray();
     							floatArray.setFloatData(arrayData);
@@ -379,22 +407,44 @@ public class ColladaHandler {
     	                    	inVCount = false;
     		                	Pattern p = Pattern.compile("\\s+");
     		                	String[] temp = p.split(vcntText.trim());
-    				        	int[] arrayData = new int[temp.length];
+    				        	final int[] arrayData = new int[temp.length];
 
-    							for (int i=0; i < temp.length; i++){
-    								arrayData[i] = Integer.parseInt(temp[i]);
-    							}
+								if( pcb != null ){
+									ProgressCallback.DataParser parser
+											= pcb.new DataParser() {
+										@Override
+										public void setValue(int i, String s) {
+											arrayData[i] = Integer.parseInt(s);
+										}
+									};
+									parser.parse(temp);
+								}else{
+									for (int i=0; i < temp.length; i++){
+										arrayData[i] = Integer.parseInt(temp[i]);
+									}
+								}
 
     							daeVrtxWeights.setVertexCount(arrayData);
     	                    }else if (localName.equalsIgnoreCase("v")){
     	                    	inV = false;
     		                	Pattern p = Pattern.compile("\\s+");
     		                	String[] temp = p.split(vText.trim());
-    				        	int[] arrayData = new int[temp.length];
+    				        	final int[] arrayData = new int[temp.length];
 
-    							for (int i=0; i < temp.length; i++){
-    								arrayData[i] = Integer.parseInt(temp[i]);
-    							}
+								if( pcb != null ){
+									ProgressCallback.DataParser parser
+											= pcb.new DataParser() {
+										@Override
+										public void setValue(int i, String s) {
+											arrayData[i] = Integer.parseInt(s);
+										}
+									};
+									parser.parse(temp);
+								}else{
+									for (int i=0; i < temp.length; i++){
+										arrayData[i] = Integer.parseInt(temp[i]);
+									}
+								}
     							
     							daeVrtxWeights.setIndices(arrayData);
     	                    }
@@ -1023,15 +1073,26 @@ public class ColladaHandler {
 		                
 		                if (localName.equalsIgnoreCase("float_array")){
 		                    inArray = false;
-				        	float[] arrayData = new float[arraySize];
+				        	final float[] arrayData = new float[arraySize];
 		                	Pattern p = Pattern.compile("\\s+");
 		                	String[] temp = p.split(arrayText.trim());
 		                    if( (arraySize != temp.length) && (arraySize > 0) ){
 		                    	throw new SAXException("Inconsistent source size for " + srcObj.getId());
 		                    }
 
-							for (int i=0; i < temp.length; i++){
-								arrayData[i] = Float.parseFloat(temp[i]);
+							if( pcb != null ){
+								ProgressCallback.DataParser parser
+										= pcb.new DataParser() {
+									@Override
+									public void setValue(int i, String s) {
+										arrayData[i] = Float.parseFloat(s);
+									}
+								};
+								parser.parse(temp);
+							}else{
+								for (int i=0; i < temp.length; i++){
+									arrayData[i] = Float.parseFloat(temp[i]);
+								}
 							}
 
 							ColladaSource.FloatArray floatArray = srcObj.getFloatArray();
@@ -1099,11 +1160,22 @@ public class ColladaHandler {
 
 		                	Pattern p = Pattern.compile("\\s+");
 		                	String[] temp = p.split(vcntText.trim());
-				        	short[] vcntData = new short[temp.length];
+				        	final short[] vcntData = new short[temp.length];
 
-							for (int i=0; i < temp.length; i++){
-								vcntData[i] = Short.parseShort(temp[i]);
-							}
+                            if( pcb != null ){
+                                ProgressCallback.DataParser parser
+                                        = pcb.new DataParser() {
+                                    @Override
+                                    public void setValue(int i, String s) {
+                                        vcntData[i] = Short.parseShort(s);
+                                    }
+                                };
+                                parser.parse(temp);
+                            }else{
+                                for (int i=0; i < temp.length; i++){
+                                    vcntData[i] = Short.parseShort(temp[i]);
+                                }
+                            }
 
 							vrtxCount.setVertexCount(vcntData);
 		                }else if (localName.equalsIgnoreCase("p")){
@@ -1113,11 +1185,22 @@ public class ColladaHandler {
 
 		                	Pattern p = Pattern.compile("\\s+");
 		                	String[] temp = p.split(indxText.trim());
-				        	int[] indxData = new int[temp.length];
+				        	final int[] indxData = new int[temp.length];
 
-							for (int i=0; i < temp.length; i++){
-								indxData[i] = Integer.parseInt(temp[i]);
-							}
+                            if( pcb != null ){
+                                ProgressCallback.DataParser parser
+                                        = pcb.new DataParser() {
+                                    @Override
+                                    public void setValue(int i, String s) {
+                                        indxData[i] = Integer.parseInt(s);
+                                    }
+                                };
+                                parser.parse(temp);
+                            }else{
+                                for (int i=0; i < temp.length; i++){
+                                    indxData[i] = Integer.parseInt(temp[i]);
+                                }
+                            }
 
 	                        indxSrc.setIndices(indxData);
 		                }else if (localName.equalsIgnoreCase("polylist")){
@@ -1181,11 +1264,22 @@ public class ColladaHandler {
 
 		                	Pattern p = Pattern.compile("\\s+");
 		                	String[] temp = p.split(indxText.trim());
-				        	int[] indxData = new int[temp.length];
+				        	final int[] indxData = new int[temp.length];
 
-							for (int i=0; i < temp.length; i++){
-								indxData[i] = Integer.parseInt(temp[i]);
-							}
+                            if( pcb != null ){
+                                ProgressCallback.DataParser parser
+                                        = pcb.new DataParser() {
+                                    @Override
+                                    public void setValue(int i, String s) {
+                                        indxData[i] = Integer.parseInt(s);
+                                    }
+                                };
+                                parser.parse(temp);
+                            }else{
+                                for (int i=0; i < temp.length; i++){
+                                    indxData[i] = Integer.parseInt(temp[i]);
+                                }
+                            }
 
 	                        indxSrc.setIndices(indxData);
 		                }else if (localName.equalsIgnoreCase("triangles")){

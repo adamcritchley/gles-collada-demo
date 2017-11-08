@@ -1,14 +1,16 @@
 package com.pfpgames.collada;
 
+import com.pfpgames.glgraphics.ProgressCallback;
+
 import java.util.ArrayList;
 
 public class ColladaObjects {
-	private String author = "";
-	private String authoringTool = "";
-	private String units = "";
-	private String meter = "";
-	private String created = "";
-	private String modified = "";
+    private String author = "";
+    private String authoringTool = "";
+    private String units = "";
+    private String meter = "";
+    private String created = "";
+    private String modified = "";
     private ArrayList<ColladaGeometry> geometries = new ArrayList<ColladaGeometry>();
     private ArrayList<ColladaImage> images = new ArrayList<ColladaImage>();
     private ArrayList<ColladaEffect> effects = new ArrayList<ColladaEffect>();
@@ -50,8 +52,8 @@ public class ColladaObjects {
 		return sn;
 	}
 
-	public void buildModel(ColladaModel model){
-		sceneInstance.buildScene(model);
+	public void buildModel(ColladaModel model, ProgressCallback progresscb){
+		sceneInstance.buildScene(model, progresscb);
 	}
 
 	public void setAuthoringTool(String authoringTool) {

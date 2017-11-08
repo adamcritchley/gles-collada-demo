@@ -82,6 +82,7 @@ public class Gl2Mesh implements ColladaMesh {
     private float oMaxZ;
 	private Vector4 meshMaxBounds = null;
 	private Vector4 meshMinBounds = null;
+	private String texSource = null;
 
 	public Gl2Mesh(AssetManager assetManager) {
     	assetMgr = assetManager;
@@ -104,6 +105,9 @@ public class Gl2Mesh implements ColladaMesh {
 		modelViewLocation = GLES20.glGetUniformLocation(shaderProgram, "modelViewMatrix");
 		colorLocation = GLES20.glGetUniformLocation(shaderProgram, "aColor");
 		texLocation = GLES20.glGetUniformLocation(shaderProgram, texName );
+		if( texSource != null ) {
+			textureHandle = loadGLTexture(texSource);
+		}
     }
 
     @Override
@@ -401,7 +405,7 @@ public class Gl2Mesh implements ColladaMesh {
 				@Override
 				public void evaluateParam(ColladaFxSurface tech) {
 					// load the image
-					textureHandle = loadGLTexture(tech.getImage().getSource());
+					texSource = tech.getImage().getSource();
 				}
 			}
 		}

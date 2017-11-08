@@ -1,5 +1,7 @@
 package com.pfpgames.collada;
 
+import com.pfpgames.glgraphics.ProgressCallback;
+
 import java.util.ArrayList;
 
 public class ColladaGeometry {
@@ -79,10 +81,10 @@ public class ColladaGeometry {
         return id;
     }
 
-    public void constructMesh(ColladaModel model, boolean trans_uv, boolean flip_u, boolean flip_v) {
+    public void constructMesh(ColladaModel model, boolean trans_uv, boolean flip_u, boolean flip_v, ProgressCallback progresscb) {
         for( ColladaPrimitive prim : all_primitives){
             ColladaMesh mesh = model.createMesh();
-            prim.constructMesh(mesh, trans_uv, flip_u, flip_v);
+            prim.constructMesh(mesh, trans_uv, flip_u, flip_v, progresscb);
         }
     }
 }

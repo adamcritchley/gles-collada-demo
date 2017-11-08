@@ -1,5 +1,7 @@
 package com.pfpgames.collada;
 
+import com.pfpgames.glgraphics.ProgressCallback;
+
 public class ColladaTriangles implements ColladaPrimitive {
 
     private ColladaVertices dae_vertices = null;
@@ -55,7 +57,7 @@ public class ColladaTriangles implements ColladaPrimitive {
     }
 
     @Override
-    public ColladaMesh constructMesh(ColladaMesh mesh, boolean trans_uv, boolean flip_u, boolean flip_v){
+    public ColladaMesh constructMesh(ColladaMesh mesh, boolean trans_uv, boolean flip_u, boolean flip_v, ProgressCallback progresscb){
         mesh.setId(id);
 
         int[]   src_indices = dae_indices.getIndices();
@@ -191,6 +193,10 @@ public class ColladaTriangles implements ColladaPrimitive {
             v += 3*3;
             t += 3*2;
             f += 3;
+
+            if( progresscb != null ){
+                progresscb.reportProgress(ProgressCallback.PROGRESS_STAGE.BUILDING, x, 1, src_indices.length);
+            }
         }
 
         mesh.setIndices(dst_indices);

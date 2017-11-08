@@ -1,5 +1,7 @@
 package com.pfpgames.collada;
 
+import com.pfpgames.glgraphics.ProgressCallback;
+
 import java.util.ArrayList;
 
 public class ColladaSceneNode {
@@ -102,14 +104,14 @@ public class ColladaSceneNode {
         return false;
     }
 
-    public void buildSceneNode(ColladaModel model) {
+    public void buildSceneNode(ColladaModel model, ProgressCallback progresscb) {
         final boolean trans_uv = model.getTransposeTextureUV();
         final boolean flip_u = model.getFlipTextureU();
         final boolean flip_v = model.getFlipTextureV();
 
         if( isGeometry() ){
             if( materials.size() == 0 ){
-                geometry.constructMesh(model, trans_uv, flip_u, flip_v);
+                geometry.constructMesh(model, trans_uv, flip_u, flip_v, progresscb);
 
                 if( matrixTransform != null ){
                     model.transform(matrixTransform);
@@ -132,7 +134,7 @@ public class ColladaSceneNode {
             }else{
                 for( Material mat : materials ){
                     ColladaMesh mesh = model.createMesh();
-                    mat.primitive.constructMesh(mesh, trans_uv, flip_u, flip_v);
+                    mat.primitive.constructMesh(mesh, trans_uv, flip_u, flip_v, progresscb);
 
                     if( matrixTransform != null ){
                         mesh.transform(matrixTransform);

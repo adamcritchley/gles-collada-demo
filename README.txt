@@ -8,6 +8,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 Release Notes:
 
+1.81:
+* Added asynchronous task to avoid erroneous ANR reports while loading large model files
+* Updated models with better looking but more taxing examples
+* Moved OpenGL functions exclusively to build*() methods
+
 1.0:
 * Tested with Android 7.0 on Nexus 6.
 * Compiled on macOS Sierra with Android Studio v2.3.0.

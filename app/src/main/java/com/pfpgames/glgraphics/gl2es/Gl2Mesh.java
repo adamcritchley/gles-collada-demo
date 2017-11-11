@@ -880,7 +880,9 @@ public class Gl2Mesh implements ColladaMesh {
 		Vector4 farLocal = Vector4.Multiply(invProj, farPoint);
 		farLocal.divideThis(farLocal.vector[3]);
 
+		// Create a 3D line from our positions
 		Vector3 direction = new Vector3(Vector4.Sub(farLocal, nearLocal));
+		// Normalize the line's directional vector
 		direction.Normalize();
 		Vector3 linePoint = new Vector3(nearLocal);
 
@@ -912,7 +914,7 @@ public class Gl2Mesh implements ColladaMesh {
 		float area_of_triangle_times_two = cross_product.Length();
 		float length_of_base = direction.Length();
 		float distance_from_point_to_ray = area_of_triangle_times_two / length_of_base;
-
+	
 		if (distance_from_point_to_ray < radius)
 			return true;
 
@@ -921,7 +923,7 @@ public class Gl2Mesh implements ColladaMesh {
 
 	public void renderOffscreen() {
 		// TODO Auto-generated method stub
-
+	
 	}
 
 	public boolean IsOffscreen() {

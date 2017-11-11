@@ -82,6 +82,7 @@ public class Gl3Mesh implements ColladaMesh {
     private float oMaxZ;
 	private Vector4 meshMaxBounds = null;
 	private Vector4 meshMinBounds = null;
+	private String texSource = null;
 
 	public Gl3Mesh(AssetManager assetManager) {
     	assetMgr = assetManager;
@@ -104,6 +105,9 @@ public class Gl3Mesh implements ColladaMesh {
 		modelViewLocation = GLES30.glGetUniformLocation(shaderProgram, "modelViewMatrix");
 		colorLocation = GLES30.glGetUniformLocation(shaderProgram, "aColor");
 		texLocation = GLES30.glGetUniformLocation(shaderProgram, texName );
+		if( texSource != null ) {
+			textureHandle = loadGLTexture(texSource);
+		}
     }
 
     @Override
@@ -167,7 +171,6 @@ public class Gl3Mesh implements ColladaMesh {
 			"void main()                                   \n" +
 			"{                                             \n" +
 			"   gl_Position = modelViewMatrix * aPosition; \n" +
-//			"   gl_Normal = aNormal;                       \n" +
 			"   vTexCoord = aTexCoord;                     \n" +
 			"}                                             \n";
 
@@ -404,7 +407,7 @@ public class Gl3Mesh implements ColladaMesh {
 				@Override
 				public void evaluateParam(ColladaFxSurface tech) {
 					// load the image
-					textureHandle = loadGLTexture(tech.getImage().getSource());
+					texSource = tech.getImage().getSource();
 				}
 			}
 		}
@@ -901,28 +904,19 @@ public class Gl3Mesh implements ColladaMesh {
 	}
 
 	public boolean sphereLineIntersect(
-			Vector3 origin, 
-			Vector3 direction, 
-			Vector3 center, 
+			Vector3 origin,
+			Vector3 direction,
+			Vector3 center,
 			float radius) {
 		Vector3 p1_to_point = Vector3.Sub(center, origin);
 		Vector3 translated_ray_point = Vector3.Add(origin, direction);
 		Vector3 p2_to_point = Vector3.Sub(center, translated_ray_point);
 
-		// The length of the cross product gives the area of an imaginary
-		// parallelogram having the two vectors as sides. A parallelogram can be
-		// thought of as consisting of two triangles, so this is the same as
-		// twice the area of the triangle defined by the two vectors.
-		// http://en.wikipedia.org/wiki/Cross_product#Geometric_meaning
 		Vector3 cross_product = Vector3.Cross(p1_to_point, p2_to_point);
 		float area_of_triangle_times_two = cross_product.Length();
 		float length_of_base = direction.Length();
-	
-		// The area of a triangle is also equal to (base * height) / 2. In
-		// other words, the height is equal to (area * 2) / base. The height
-		// of this triangle is the distance from the point to the ray.
 		float distance_from_point_to_ray = area_of_triangle_times_two / length_of_base;
-		
+	
 		if (distance_from_point_to_ray < radius)
 			return true;
 
@@ -931,7 +925,7 @@ public class Gl3Mesh implements ColladaMesh {
 
 	public void renderOffscreen() {
 		// TODO Auto-generated method stub
-		
+	
 	}
 
 	public boolean IsOffscreen() {

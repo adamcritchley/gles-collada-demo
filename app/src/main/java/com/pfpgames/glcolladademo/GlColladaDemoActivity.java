@@ -3,7 +3,10 @@ package com.pfpgames.glcolladademo;
 import java.io.IOException;
 import java.text.DecimalFormat;
 
+import javax.microedition.khronos.egl.EGL10;
 import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.egl.EGLContext;
+import javax.microedition.khronos.egl.EGLDisplay;
 import javax.microedition.khronos.opengles.GL10;
 
 import com.pfpgames.collada.ColladaHandler;
@@ -32,6 +35,7 @@ import android.os.Bundle;
 import android.view.MotionEvent;
 import android.view.Window;
 import android.view.WindowManager;
+
 
 public class GlColladaDemoActivity extends Activity {
     private static final int NUM_MODELS = 5;
@@ -125,14 +129,18 @@ public class GlColladaDemoActivity extends Activity {
         threeDec = new DecimalFormat("0.000");
         threeDec.setGroupingUsed(false);
 
-        if( checkGLES20Support() )
-            view = new GLSurfaceView( this );
-        else
-            return;
+        view = new GLSurfaceView(this);
+        // First, check if our old method still works
+        if( checkGLES2Support() ) {
+            view.setEGLContextClientVersion(2);
+        } else {
+            // This is the new way to check for the version and create a context
+            view.setEGLContextFactory(new GLES2ContextFactory());
+        }
 
-        view.setEGLContextClientVersion(2);
         glrenderer = new DemoRenderer();
         view.setRenderer( glrenderer );
+        view.setRenderMode( GLSurfaceView.RENDERMODE_CONTINUOUSLY );
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(
                 WindowManager.LayoutParams.FLAG_FULLSCREEN,
@@ -153,12 +161,39 @@ public class GlColladaDemoActivity extends Activity {
         view.onResume();
     }
 
-    private boolean checkGLES20Support()
+    private static class GLES2ContextFactory implements GLSurfaceView.EGLContextFactory {
+
+        private int EGL_CONTEXT_CLIENT_VERSION = 0x3098;
+        private int glVersion = 2;
+
+        @Override
+        public EGLContext createContext(
+                EGL10 egl, EGLDisplay display, EGLConfig eglConfig) {
+
+            int[] attrib_list = {EGL_CONTEXT_CLIENT_VERSION, glVersion, EGL10.EGL_NONE };
+            // Attempt to create a OpenGL ES context
+            return egl.eglCreateContext(
+                    display, eglConfig, EGL10.EGL_NO_CONTEXT, attrib_list);
+        }
+
+        @Override
+        public void destroyContext(EGL10 egl, EGLDisplay display, EGLContext context) {
+            egl.eglDestroyContext(display, context);
+        }
+    }
+
+    private boolean checkGLES2Support()
     {
+        // This sometimes just fails because reqGlEsVersion is zero for some newer devices
         final ActivityManager activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        if( activityManager == null ) {
+            return false;
+        }
         final ConfigurationInfo configurationInfo = activityManager.getDeviceConfigurationInfo();
-        final boolean supportsEs2 = configurationInfo.reqGlEsVersion >= 0x20000;
-        return supportsEs2;
+        if( configurationInfo == null ) {
+            return false;
+        }
+        return (configurationInfo.reqGlEsVersion >= 0x20000);
     }
 
     @Override
@@ -178,11 +213,11 @@ public class GlColladaDemoActivity extends Activity {
                 if (event.getAction() == MotionEvent.ACTION_MOVE) {
                     // Do nothing...
                 } else if (event.getAction() == MotionEvent.ACTION_DOWN) {
-
                     if (models_view != null && models_view.hitTest(screen_x, screen_y)) {
                         firstFrame = true;
                         currentScreen = 2;
                     } else if (mini_game != null && mini_game.hitTest(screen_x, screen_y)) {
+                        firstFrame = true;
                         currentScreen = 3;
                     }
                 }
@@ -292,9 +327,8 @@ public class GlColladaDemoActivity extends Activity {
         private final int MODEL_WEIGHT = 20;
         private final int TOTAL_MODELS = 79 + NUM_MODELS * MODEL_WEIGHT;
         private final float LOAD_STEP = 1.0F / TOTAL_MODELS;
-
-        AsyncTask<Void, Void, Void> task = null;
         private int model_loading = 0;
+        private AsyncTask<Void, Void, Void> task = null;
 
         public void onDrawFrame(GL10 unused)
         {
@@ -345,8 +379,13 @@ public class GlColladaDemoActivity extends Activity {
 
                 framesDrawn++;
             }else if( currentScreen == 3) {
+                if( firstFrame ){
+                    startTime = System.currentTimeMillis();
+                    firstFrame = false;
+                }
+
                 // Play our mini game!
-                float draw_time = ((float)(System.currentTimeMillis() - startTime)) / 1000.0f;
+                float draw_time = (float)(((double)(System.currentTimeMillis() - startTime)) / 1000.0);
                 minigame_level.drawStage(projMatrix, viewportWidth, viewportHeight, draw_time);
             }
         }
@@ -931,7 +970,6 @@ public class GlColladaDemoActivity extends Activity {
             GLES20.glEnable(GLES20.GL_DEPTH_TEST); 			// Enables Depth Testing
             GLES20.glDepthFunc(GLES20.GL_LEQUAL); 			// The Type Of Depth Testing To Do
         }
-
 
         private void buildCharacter(ColladaHandler hcollada, AssetManager assetMgr, String file, char cval, float pitch)
         {
